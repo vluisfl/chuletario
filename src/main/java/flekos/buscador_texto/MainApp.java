@@ -20,16 +20,45 @@ import org.apache.commons.lang3.StringUtils;
  */
 public class MainApp {
 
+	/**
+	 * @param args
+	 */
 	public static void main(String[] args) {
+
+		String extension = "xhtml";
+
+		if (args != null && args.length == 1) {
+			extension = args[0];
+			System.out.println("Se buscarán ficheros con extensión: " + extension);
+		} else if (args == null || args.length != 1) {
+			System.err.println(
+					"No se han facilitado los parámetros correctos. Se buscarán ficheros con extensión: " + extension);
+		}
 
 		List<String> files;
 		try {
-			files = findFiles(Paths.get(""), "xhtml");
+
+			/*
+			 * primero definimos la estructura, en la que definimos los apartados que vamos
+			 * a buscar, el patrón para cada apartado y la lista de coincidencias que se
+			 * obtienen
+			 * 
+			 */
+
+			HashMap<String, HashMap<String, List<String>>> apartadosMap = new HashMap<>();
+			initializeApartados(apartadosMap, "** acciones **", "action=\"");
+			initializeApartados(apartadosMap, "** acciones_listener **", "actionlistener=\"");
+			initializeApartados(apartadosMap, "** includes **", "<ui:include");
+			initializeApartados(apartadosMap, "** listas_obtenerLista **", "listMethod=\"");
+			initializeApartados(apartadosMap, "** listas_obtenerTotal **", "countMethod=\"");
+
+			// lanzamos la búsqueda
+			files = findFiles(Paths.get(""), extension);
 			if (files.isEmpty()) {
 				System.out.println("No se han encontrado ficheros");
 			} else {
 				files.forEach(x -> {
-					parsearFichero(x);
+					searchMatchsInFile(x, apartadosMap);
 					System.out.println("");
 				});
 			}
@@ -40,7 +69,32 @@ public class MainApp {
 
 	}
 
-	public static void parsearFichero(String fichero) {
+	/**
+	 * Inicializa la estructura de apartados y cadenas buscadas
+	 * 
+	 * @param apartados 
+	 * @param apartado -> apartado que agrupa los resultados coincidentes con la cadena buscada
+	 * @param cadenaBuscada -> cadena buscada 
+	 */
+	public static void initializeApartados(HashMap<String, HashMap<String, List<String>>> apartados, String apartado,
+			String cadenaBuscada) {
+		if (apartados == null) {
+			apartados = new HashMap<>();
+		}
+		if (StringUtils.isNotBlank(apartado) && StringUtils.isNotBlank(cadenaBuscada)) {
+			HashMap<String, List<String>> busquedaMap = new HashMap<>();
+			busquedaMap.put(cadenaBuscada, new ArrayList<String>());
+			apartados.put(apartado, busquedaMap);
+		}
+	}
+
+	/**
+	 * Busca una serie de cadenas dentro de un determinado fichero y muestra las
+	 * coincidencias
+	 * 
+	 * @param fichero -> nombre del fichero en el que se buscarán las cadenas
+	 */
+	public static void searchMatchsInFile(String fichero, HashMap<String, HashMap<String, List<String>>> apartadosMap) {
 		System.out.println("Fichero -> " + fichero);
 		BufferedReader reader;
 
@@ -48,46 +102,54 @@ public class MainApp {
 			reader = new BufferedReader(new FileReader(fichero));
 			String line = reader.readLine();
 
-			HashMap<String, List<String>> datosParseados = new HashMap<>();
-			datosParseados.put("acciones", new ArrayList<>());
-			datosParseados.put("acciones_listener", new ArrayList<>());
-			datosParseados.put("includes", new ArrayList<>());
-			datosParseados.put("listas_obtenerLista", new ArrayList<>());
-			datosParseados.put("listas_obtenerTotal", new ArrayList<>());
-
 			while (line != null) {
+				final String fila = line;
+				apartadosMap.forEach((key, value) -> {
+					HashMap<String, List<String>> busquedaMap = value;
+					busquedaMap.forEach((keyMap, valueMap) -> {
+						searchString(fila, keyMap, valueMap);
+					});
+				});
+
 				// read next line
 				line = reader.readLine();
-
-				parsearLinea(line, "action=\"", datosParseados.get("acciones"));
-				parsearLinea(line, "actionlistener=\"", datosParseados.get("acciones_listener"));
-				parsearLinea(line, "ui:include", datosParseados.get("includes"));
-				parsearLinea(line, "listMethod=\"", datosParseados.get("listas_obtenerLista"));
-				parsearLinea(line, "countMethod=\"", datosParseados.get("listas_obtenerTotal"));
 
 			}
 
 			reader.close();
 
-			datosParseados.forEach((key, value) -> {
-				System.out.println("\t" + key);
-				for (String item : value) {
-					System.out.println("\t\t" + item);
-				}
-			});
+			apartadosMap.forEach((key, value) -> {
+				System.out.println("\n\t" + key+"\n");
+				HashMap<String, List<String>> busquedaMap = value;
+				busquedaMap.forEach((keyMap, valueMap) -> {
+					for (String item : valueMap) {
+						System.out.println("\t\t" + item);
+					}
+					;
+				});
 
+			});
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
 
-	public static void parsearLinea(String linea, String cadenaBuscada, List<String> lista) {
-		if (StringUtils.containsIgnoreCase(linea, cadenaBuscada)) {
-			lista.add(StringUtils.trim(linea));
+	/**
+	 * Busca una cadena dentro de una fila y si se encuentra coincidencia se añade a lista de 
+	 * coincidencias
+	 * 
+	 * @param linea
+	 * @param cadenaBuscada
+	 * @param listaCoincidencias
+	 */
+	public static void searchString(String fila, String cadenaBuscada, List<String> listaCoincidencias) {
+		if (StringUtils.containsIgnoreCase(fila, cadenaBuscada)) {
+			listaCoincidencias.add(StringUtils.trim(fila));
 		}
 	}
 
 	/**
+	 * Realiza la búsqueda de ficheros que tengan una determinada extensión
 	 * 
 	 * @param path
 	 * @param fileExtension
