@@ -62,31 +62,45 @@ public class MainApp {
 		System.out.println("@startmindmap");
 		System.out.println("* nodo padre");
 		for(ApartadoDTO item: listaFicheros) {
-			System.out.println("**: " + item.getArchivo());
-			System.out.println("\t- actions");
+			
+			if (StringUtils.containsIgnoreCase(item.getRuta(),"include")) {
+				System.out.println("**: <color #red><size:20><&paperclip></size> " + item.getArchivo()+"</color> --> <color #blue> XXX </color>");
+			}else {
+				System.out.println("**: <color #red>" + item.getArchivo()+"</color> --> <color #blue> XXX </color>");
+			}
+			
+			
+			System.out.println("\t- <color #green>actions:</color>");
 			for(String cadena: item.getActions()) {
 				System.out.println("\t\t - " + cadena);
 			}
 			
-			System.out.println("\t- actions listeners");
+			System.out.println("\t- <color #green>actions listeners: </color>");			
 			for(String cadena: item.getActionListeners()) {
 				System.out.println("\t\t - " + cadena);
 			}
 			
-			System.out.println("\t- listMethods");
+			System.out.println("\t- <color #green>listMethods:</color>");
 			for(String cadena: item.getListMethod()) {
 				System.out.println("\t\t - " + cadena);
 			}
 			
-			System.out.println("\t- countMethods");
+			System.out.println("\t- <color #green>countMethods:</color>");
 			for(String cadena: item.getCountMethod()) {
 				System.out.println("\t\t - " + cadena);
 			}
 			
-			System.out.println("\t- includes");
+			System.out.println("\t- <color #green>includes:</color>");
 			for(String cadena: item.getIncludes()) {
 				System.out.println("\t\t - " + cadena);
 			}
+			
+			System.out.println("----");
+			System.out.println("\t- DDF");
+			System.out.println("\t\t- Casos de uso:");
+			System.out.println("----");
+			System.out.println("\t- DDT");
+			System.out.println("\t\t- Componente:");
 			System.out.println(";");
 		}
 		System.out.println("@endmindmap");
@@ -141,7 +155,7 @@ public class MainApp {
 				searchString(fila, "actionlistener=\"", apartado.getActionListeners());
 				searchString(fila, "<ui:include", apartado.getIncludes());
 				searchString(fila, "listMethod=\"", apartado.getListMethod());
-				searchString(fila, "countMethod=\"", apartado.getListMethod());
+				searchString(fila, "countMethod=\"", apartado.getCountMethod());
 
 				// read next line
 				line = reader.readLine();
