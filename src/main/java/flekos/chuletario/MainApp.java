@@ -49,7 +49,7 @@ public class MainApp {
 			} else {
 				files.forEach(x -> {
 					searchMatchsInFile(x, listaFicheros);
-					System.out.println("");
+					//System.out.println("");
 				});
 			}
 
@@ -59,10 +59,10 @@ public class MainApp {
 		}
 
 		
-		System.out.println("@startuml");
+		System.out.println("@startmindmap");
 		System.out.println("* nodo padre");
 		for(ApartadoDTO item: listaFicheros) {
-			System.out.println("** " + item.getArchivo() + ": ");
+			System.out.println("**: " + item.getArchivo());
 			System.out.println("\t- actions");
 			for(String cadena: item.getActions()) {
 				System.out.println("\t\t - " + cadena);
@@ -89,7 +89,7 @@ public class MainApp {
 			}
 			System.out.println(";");
 		}
-		System.out.println("@enduml");
+		System.out.println("@endmindmap");
 		
 	}
 
@@ -120,7 +120,7 @@ public class MainApp {
 	 * @param fichero -> nombre del fichero en el que se buscarán las cadenas
 	 */
 	public static void searchMatchsInFile(String fichero, List<ApartadoDTO> listaFicheros) {
-		System.out.println("Fichero -> " + fichero);
+		//System.out.println("Fichero -> " + fichero);
 		BufferedReader reader;
 
 		try {
