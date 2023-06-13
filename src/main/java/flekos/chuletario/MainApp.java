@@ -21,6 +21,11 @@ import org.apache.commons.lang3.StringUtils;
  */
 public class MainApp {
 
+	// chuletario --incluir_ddt=n --extension=java
+
+	private final static String NO_MOSTRAR_DDT = "--incluir_ddt=n";
+	private final static String FILTRAR_EXTENSION = "--extension=";
+
 	/**
 	 * @param args
 	 */
@@ -30,12 +35,19 @@ public class MainApp {
 
 		String extension = "xhtml";
 
-		if (args != null && args.length == 1) {
-			extension = args[0];
-			System.out.println("Se buscarán ficheros con extensión: " + extension);
-		} else if (args == null || args.length != 1) {
-			System.err.println(
-					"No se han facilitado los parámetros correctos. Se buscarán ficheros con extensión: " + extension);
+		boolean mostrarDdfDdt = true;
+
+		for (String arg : args) {
+			if (StringUtils.containsIgnoreCase(arg, NO_MOSTRAR_DDT)) {
+				mostrarDdfDdt = false;
+			} else if (StringUtils.containsIgnoreCase(arg, FILTRAR_EXTENSION)) {
+				extension = StringUtils.remove(arg, FILTRAR_EXTENSION);
+				if (StringUtils.isBlank(extension)) {
+					extension = "xhtml";
+					System.out.println("No se ha facilitado correctamente la extensión.");
+				}
+				System.out.println("Se buscarán ficheros con extensión: " + extension);
+			}
 		}
 
 		List<String> files;
@@ -48,7 +60,7 @@ public class MainApp {
 			} else {
 				files.forEach(x -> {
 					searchMatchsInFile(x, listaFicheros);
-					//System.out.println("");
+					// System.out.println("");
 				});
 			}
 
@@ -57,18 +69,9 @@ public class MainApp {
 			e.printStackTrace();
 		}
 
+		// pintarMindMapPlano(listaFicheros);
 
-		pintarMindMapPlano(listaFicheros);
-
-		// TODO: pintar en arbol
-
-		// localizar los que no aparecen en ningún include -> son los raices
-
-		// para cada uno de los raices
-
-		// pintar hijos
-
-		// para cada hijo -> pintar hijos
+		pintarMindMapArbol(listaFicheros, mostrarDdfDdt);
 
 	}
 
@@ -99,7 +102,7 @@ public class MainApp {
 	 * @param fichero -> nombre del fichero en el que se buscarán las cadenas
 	 */
 	public static void searchMatchsInFile(String fichero, List<ApartadoDTO> listaFicheros) {
-		//System.out.println("Fichero -> " + fichero);
+		// System.out.println("Fichero -> " + fichero);
 		BufferedReader reader;
 
 		try {
@@ -140,8 +143,8 @@ public class MainApp {
 	 * Busca una cadena dentro de una fila y si se encuentra coincidencia se añade a
 	 * lista de coincidencias
 	 *
-	 * @param fila la fila en la que se busca la cadena buscada
-	 * @param cadenaBuscada es el patrón de expresión regular a buscar
+	 * @param fila               la fila en la que se busca la cadena buscada
+	 * @param cadenaBuscada      es el patrón de expresión regular a buscar
 	 * @param listaCoincidencias
 	 */
 	public static void searchString(String fila, String cadenaBuscada, List<String> listaCoincidencias) {
@@ -186,12 +189,13 @@ public class MainApp {
 	 * pinta el modelo de mindmap plano
 	 *
 	 * @param listaFicheros
+	 * @param mostrarDdfDdt
 	 */
-	public static void pintarMindMapPlano(List<ApartadoDTO> listaFicheros) {
+	public static void pintarMindMapPlano(List<ApartadoDTO> listaFicheros, boolean mostrarDdfDdt) {
 		System.out.println("@startmindmap");
 		System.out.println("* nodo padre");
-		for(ApartadoDTO item: listaFicheros) {
-			pintarNodo(2, item);
+		for (ApartadoDTO item : listaFicheros) {
+			pintarNodo(2, item, mostrarDdfDdt);
 		}
 		System.out.println("@endmindmap");
 	}
@@ -200,48 +204,107 @@ public class MainApp {
 	 * @param nivel
 	 * @param itemDTO
 	 */
-	public static void pintarNodo(Integer nivel, ApartadoDTO itemDTO) {
+	public static void pintarNodo(Integer nivel, ApartadoDTO itemDTO, boolean mostrarDdfDdt) {
 
 		String profundidad = new String(new char[nivel]).replace("\0", "*");
 
-		if (StringUtils.containsIgnoreCase(itemDTO.getRuta(),"include")) {
-			System.out.println(profundidad + ": <color #red><size:20><&paperclip></size> " + itemDTO.getArchivo()+"</color> --> <color #blue> XXX </color>");
-		}else {
-			System.out.println(profundidad + ": <color #red>" + itemDTO.getArchivo()+"</color> --> <color #blue> XXX </color>");
+		if (StringUtils.containsIgnoreCase(itemDTO.getRuta(), "include")) {
+			System.out.println(profundidad + ": <color #red><size:20><&paperclip></size> " + itemDTO.getArchivo()
+					+ "</color> --> <color #blue> XXX </color>");
+		} else {
+			System.out.println(
+					profundidad + ": <color #red>" + itemDTO.getArchivo() + "</color> --> <color #blue> XXX </color>");
 		}
 
 		System.out.println("\t- <color #green>actions:</color>");
-		for(String cadena: itemDTO.getActions()) {
+		for (String cadena : itemDTO.getActions()) {
 			System.out.println("\t\t - " + cadena);
 		}
 
 		System.out.println("\t- <color #green>actions listeners: </color>");
-		for(String cadena: itemDTO.getActionListeners()) {
+		for (String cadena : itemDTO.getActionListeners()) {
 			System.out.println("\t\t - " + cadena);
 		}
 
 		System.out.println("\t- <color #green>listMethods:</color>");
-		for(String cadena: itemDTO.getListMethod()) {
+		for (String cadena : itemDTO.getListMethod()) {
 			System.out.println("\t\t - " + cadena);
 		}
 
 		System.out.println("\t- <color #green>countMethods:</color>");
-		for(String cadena: itemDTO.getCountMethod()) {
+		for (String cadena : itemDTO.getCountMethod()) {
 			System.out.println("\t\t - " + cadena);
 		}
 
 		System.out.println("\t- <color #green>includes:</color>");
-		for(String cadena: itemDTO.getIncludes()) {
+		for (String cadena : itemDTO.getIncludes()) {
 			System.out.println("\t\t - " + cadena);
 		}
 
-		System.out.println("----");
-		System.out.println("\t- DDF");
-		System.out.println("\t\t- Casos de uso:");
-		System.out.println("----");
-		System.out.println("\t- DDT");
-		System.out.println("\t\t- Componente:");
-		System.out.println(";");
+		if (mostrarDdfDdt) {
+
+			System.out.println("----");
+			System.out.println("\t- DDF");
+			System.out.println("\t\t- Casos de uso:");
+			System.out.println("----");
+			System.out.println("\t- DDT");
+			System.out.println("\t\t- Componente:");
+			System.out.println(";");
+		}
 	}
 
+	public static void pintarMindMapArbol(List<ApartadoDTO> listaFicheros, boolean mostrarDdfDdt) {
+
+		List<ApartadoDTO> listaFicherosRaiz = new ArrayList<ApartadoDTO>();
+
+		List<String> includes = new ArrayList<String>();
+
+		for (ApartadoDTO item : listaFicheros) {
+			includes.addAll(item.getIncludes());
+		}
+
+		for (ApartadoDTO item : listaFicheros) {
+			boolean esRaiz = true;
+			for (String include : includes) {
+				if (StringUtils.containsIgnoreCase(include, item.getArchivo())) {
+					esRaiz = false;
+					break;
+				}
+			}
+			if (esRaiz) {
+				listaFicherosRaiz.add(item);
+			}
+
+		}
+
+		System.out.println("@startmindmap");
+		System.out.println("* nodo padre");
+		for (ApartadoDTO item : listaFicherosRaiz) {
+			pintarHijosArbol(2, item, listaFicheros, mostrarDdfDdt);
+		}
+		System.out.println("@endmindmap");
+	}
+
+	/**
+	 * @param nivel
+	 * @param padre
+	 * @param listaFicheros
+	 */
+	public static void pintarHijosArbol(Integer nivel, ApartadoDTO padre, List<ApartadoDTO> listaFicheros,
+			boolean mostrarDdfDdt) {
+
+		pintarNodo(nivel, padre, mostrarDdfDdt);
+
+		Integer nivelHijo = nivel + 1;
+
+		for (String hijo : padre.getIncludes()) {
+
+			for (ApartadoDTO fichero : listaFicheros) {
+				if (StringUtils.containsIgnoreCase(hijo, "/" + fichero.getArchivo())) {
+					pintarHijosArbol(nivelHijo, fichero, listaFicheros, mostrarDdfDdt);
+				}
+			}
+		}
+
+	}
 }
