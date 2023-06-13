@@ -10,7 +10,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -27,11 +26,14 @@ import net.sourceforge.plantuml.SourceStringReader;
  */
 public class MainApp {
 
-	// chuletario --incluir_ddt=n --extension=java
+	// Ejemplo de llamada desde línea de comandos
+	// java -jar chuletario.jar --incluir_ddf --extension=xhtml --no_svg
+	// --nodo_central=Ejemplo
 
 	private final static String MOSTRAR_DDF = "--incluir_ddf";
 	private final static String FILTRAR_EXTENSION = "--extension=";
 	private final static String NO_GENERAR_SVG = "--no_svg";
+	private final static String NODO_CENTRAL = "--nodo_central=";
 
 	/**
 	 * @param args
@@ -41,6 +43,7 @@ public class MainApp {
 		List<ApartadoDTO> listaFicheros = new ArrayList<>();
 
 		String extension = "xhtml";
+		String nodo = "nodo_central";
 
 		boolean mostrarDdfDdt = false;
 		boolean generarSvg = true;
@@ -55,16 +58,21 @@ public class MainApp {
 					System.out.println("No se ha facilitado correctamente la extensión.");
 				}
 				System.out.println("Se buscarán ficheros con extensión: " + extension);
+			} else if (StringUtils.containsIgnoreCase(arg, NODO_CENTRAL)) {
+				nodo = StringUtils.remove(arg, NODO_CENTRAL);
+				if (StringUtils.isBlank(nodo)) {
+					nodo = "nodo_central";
+				}
 			} else if (StringUtils.containsIgnoreCase(arg, NO_GENERAR_SVG)) {
 				generarSvg = false;
 			}
 		}
 
-		List<String> files;
 		try {
 
 			// lanzamos la búsqueda
-			files = findFiles(Paths.get(""), extension);
+			List<String> files = findFiles(Paths.get(""), extension);
+
 			if (files.isEmpty()) {
 				System.out.println("No se han encontrado ficheros");
 			} else {
@@ -83,70 +91,30 @@ public class MainApp {
 
 		StringBuffer sb = new StringBuffer();
 
-		pintarMindMapArbol(listaFicheros, mostrarDdfDdt, sb);
+		pintarMindMapArbol(listaFicheros, mostrarDdfDdt, sb, nodo, generarSvg);
+
+		String nombreFichero = "Chuletario_" + nodo + ".puml";
 
 		// generación del fichero puml
-		File mapaPumlOutputFile = new File("mapa.puml");
-		try (FileWriter fileWriter = new FileWriter(mapaPumlOutputFile)) {
-			fileWriter.write(sb.toString());
-			System.out.println("Archivo PUML generado: " + mapaPumlOutputFile.getAbsolutePath());
-		} catch (IOException ioe) {
-			ioe.printStackTrace();
-		}
+		generarFicheroPuml(sb, nombreFichero);
 
 		// generación del fichero svg
 		if (generarSvg) {
-			try {
-				// Crear objeto SourceStringReader con el código PlantUML
-				SourceStringReader reader = new SourceStringReader(sb.toString());
-
-				// Crear archivo de salida SVG
-				File outputFile = new File("mapa.svg");
-				FileOutputStream outputStream = new FileOutputStream(outputFile);
-
-				// Generar el archivo SVG
-				String svg = reader.generateImage(outputStream, new FileFormatOption(FileFormat.SVG));
-
-				// Cerrar el flujo de salida
-				outputStream.close();
-
-				// Imprimir la ruta del archivo SVG generado
-				System.out.println("Archivo SVG generado: " + outputFile.getAbsolutePath());
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+			generarFicheroSvg(sb, StringUtils.remove(nombreFichero, "puml") + "svg");
 		}
 
 	}
 
 	/**
-	 * Inicializa la estructura de apartados y cadenas buscadas
+	 * Para un determinado fichero se generará un ApartadoDTO que representará un
+	 * nodo del MindMap
 	 *
-	 * @param apartados
-	 * @param apartado      -> apartado que agrupa los resultados coincidentes con
-	 *                      la cadena buscada
-	 * @param cadenaBuscada -> cadena buscada
+	 * @param fichero        -> nombre del fichero en el que se buscarán las cadenas
+	 * @param listaApartados -> lista de apartados al que se añade el nuevo apartado
+	 *                       generado pare el fichero
 	 */
-	public static void initializeApartados(HashMap<String, HashMap<String, List<String>>> apartados, String apartado,
-			String cadenaBuscada) {
-		if (apartados == null) {
-			apartados = new HashMap<>();
-		}
-		if (StringUtils.isNotBlank(apartado) && StringUtils.isNotBlank(cadenaBuscada)) {
-			HashMap<String, List<String>> busquedaMap = new HashMap<>();
-			busquedaMap.put(cadenaBuscada, new ArrayList<String>());
-			apartados.put(apartado, busquedaMap);
-		}
-	}
+	public static void searchMatchsInFile(String fichero, List<ApartadoDTO> listaApartados) {
 
-	/**
-	 * Busca una serie de cadenas dentro de un determinado fichero y muestra las
-	 * coincidencias
-	 *
-	 * @param fichero -> nombre del fichero en el que se buscarán las cadenas
-	 */
-	public static void searchMatchsInFile(String fichero, List<ApartadoDTO> listaFicheros) {
-		// System.out.println("Fichero -> " + fichero);
 		BufferedReader reader;
 
 		try {
@@ -176,7 +144,7 @@ public class MainApp {
 
 			reader.close();
 
-			listaFicheros.add(apartado);
+			listaApartados.add(apartado);
 
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -184,18 +152,19 @@ public class MainApp {
 	}
 
 	/**
-	 * Busca una cadena dentro de una fila y si se encuentra coincidencia se añade a
-	 * lista de coincidencias
+	 * Busca una cadena dentro de una fila de un fichero y si se encuentra una
+	 * coincidencia se añade a la lista de coincidencias
 	 *
-	 * @param fila               la fila en la que se busca la cadena buscada
-	 * @param cadenaBuscada      es el patrón de expresión regular a buscar
-	 * @param listaCoincidencias
+	 * @param fila               -> la fila en la que se busca la cadena buscada
+	 * @param cadenaBuscada      -> es el patrón de expresión regular a buscar
+	 * @param listaCoincidencias -> coincidencias coincidencias encontradas
 	 */
 	public static void searchString(String fila, String cadenaBuscada, List<String> listaCoincidencias) {
 
 		if (fila.matches(cadenaBuscada)) {
 			listaCoincidencias.add(StringUtils.trim(fila));
 		}
+
 	}
 
 	/**
@@ -230,100 +199,63 @@ public class MainApp {
 	}
 
 	/**
-	 * pinta el modelo de mindmap plano
-	 *
-	 * @param listaFicheros
-	 * @param mostrarDdfDdt
+	 * Genera un nodo PUML
+	 * 
+	 * @param nivel         -> nivel del nodo
+	 * @param nodoDto       -> apartado del nodo a pintar
+	 * @param mostrarDdfDdt -> controla si se generarán los apartados de DDF y DDT
+	 * @param sb            -> contenido PUML generado
 	 */
-	public static void pintarMindMapPlano(List<ApartadoDTO> listaFicheros, boolean mostrarDdfDdt, StringBuffer sb) {
-		sb.append("@startmindmap").append("\n");
-		sb.append("* nodo padre").append("\n");
-		for (ApartadoDTO item : listaFicheros) {
-			pintarNodo(2, item, mostrarDdfDdt, sb);
-		}
-//		System.out.println("@endmindmap");
-		sb.append("@endmindmap").append("\n");
-
-	}
-
-	/**
-	 * @param nivel
-	 * @param itemDTO
-	 */
-	public static void pintarNodo(Integer nivel, ApartadoDTO itemDTO, boolean mostrarDdfDdt, StringBuffer sb) {
+	public static void pintarNodo(Integer nivel, ApartadoDTO nodoDto, boolean mostrarDdfDdt, StringBuffer sb) {
 
 		String profundidad = new String(new char[nivel]).replace("\0", "*");
 		boolean pagina = false;
 
-		if (StringUtils.containsIgnoreCase(itemDTO.getRuta(), "include")) {
-//			System.out.println(profundidad + ": <color #red><size:20><&paperclip></size> " + itemDTO.getArchivo()
-//					+ "</color> --> <color #blue> XXX </color>");
-			sb.append(profundidad + ": <color #red><size:20><&paperclip></size> " + itemDTO.getArchivo()
+		if (StringUtils.containsIgnoreCase(nodoDto.getRuta(), "include")) {
+			sb.append(profundidad + ": <color #red><size:20><&paperclip></size> " + nodoDto.getArchivo()
 					+ "</color> --> <color #blue> XXX </color>").append("\n");
 		} else {
-//			System.out.println(
-//					profundidad + ": <color #red>" + itemDTO.getArchivo() + "</color> --> <color #blue> XXX </color>");
-			sb.append(profundidad + ": <color #red>" + itemDTO.getArchivo() + "</color> --> <color #blue> XXX </color>")
+			sb.append(profundidad + ": <color #red>" + nodoDto.getArchivo() + "</color> --> <color #blue> XXX </color>")
 					.append("\n");
 			pagina = true;
 		}
 
-		sb.append(itemDTO.getRuta()).append("\n");
+		sb.append(nodoDto.getRuta()).append("\n");
 
-		// System.out.println("\t- <color #green>actions:</color>");
 		sb.append("\t- <color #green>actions:</color>").append("\n");
-		for (String cadena : itemDTO.getActions()) {
-			// System.out.println("\t\t - " + cadena);
+		for (String cadena : nodoDto.getActions()) {
 			sb.append("\t\t - " + cadena).append("\n");
 		}
 
-		// System.out.println("\t- <color #green>actions listeners: </color>");
 		sb.append("\t- <color #green>actions listeners: </color>").append("\n");
-		for (String cadena : itemDTO.getActionListeners()) {
-			// System.out.println("\t\t - " + cadena);
+		for (String cadena : nodoDto.getActionListeners()) {
 			sb.append("\t\t - " + cadena).append("\n");
 		}
 
-		// System.out.println("\t- <color #green>listMethods:</color>");
 		sb.append("\t- <color #green>listMethods: </color>").append("\n");
-		for (String cadena : itemDTO.getListMethod()) {
-			// System.out.println("\t\t - " + cadena);
+		for (String cadena : nodoDto.getListMethod()) {
 			sb.append("\t\t - " + cadena).append("\n");
 		}
 
-		// System.out.println("\t- <color #green>countMethods:</color>");
 		sb.append("\t- <color #green>countMethods: </color>").append("\n");
 
-		for (String cadena : itemDTO.getCountMethod()) {
-			// System.out.println("\t\t - " + cadena);
+		for (String cadena : nodoDto.getCountMethod()) {
 			sb.append("\t\t - " + cadena).append("\n");
 		}
 
-		// System.out.println("\t- <color #green>includes:</color>");
 		sb.append("\t- <color #green>includes: </color>").append("\n");
-		for (String cadena : itemDTO.getIncludes()) {
-			// System.out.println("\t\t - " + cadena);
+		for (String cadena : nodoDto.getIncludes()) {
 			sb.append("\t\t - " + cadena).append("\n");
 		}
 
 		if (mostrarDdfDdt) {
-
-//			System.out.println("----");
-//			System.out.println("\t- DDF");
-//			System.out.println("\t\t- Casos de uso:");
-//			System.out.println("----");
-//			System.out.println("\t- DDT");
-//			System.out.println("\t\t- Componente:");
-
 			sb.append("----").append("\n");
 			sb.append("\t- DDF").append("\n");
 			sb.append("\t\t- Casos de uso:").append("\n");
 			sb.append("----").append("\n");
 			sb.append("\t- DDT").append("\n");
 			sb.append("\t\t- Componente:").append("\n");
-
 		}
-//		System.out.println(";");
 
 		if (pagina) {
 			sb.append(";").append("\n");
@@ -333,17 +265,30 @@ public class MainApp {
 
 	}
 
-	public static void pintarMindMapArbol(List<ApartadoDTO> listaFicheros, boolean mostrarDdfDdt, StringBuffer sb) {
+	/**
+	 * Crea un chuletario PUML con el nodo central y N ficheros PUML con los nodos
+	 * hijos anidados
+	 * 
+	 * @param listaApartados -> lista de nodos encontrados a pintar
+	 * @param mostrarDdfDdt  -> controla si se generarán los apartados DDF y DDT
+	 * @param sb             -> contenido
+	 * @param nodo           -> nombre del nodo central
+	 * @param generarSvg     -> controla si se generarán los ficheros SVG
+	 */
+	public static void pintarMindMapArbol(List<ApartadoDTO> listaApartados, boolean mostrarDdfDdt, StringBuffer sb,
+			String nodo, boolean generarSvg) {
 
-		List<ApartadoDTO> listaFicherosRaiz = new ArrayList<ApartadoDTO>();
+		List<ApartadoDTO> listaNodosRaiz = new ArrayList<ApartadoDTO>();
 
 		List<String> includes = new ArrayList<String>();
 
-		for (ApartadoDTO item : listaFicheros) {
+		for (ApartadoDTO item : listaApartados) {
 			includes.addAll(item.getIncludes());
 		}
 
-		for (ApartadoDTO item : listaFicheros) {
+		// para localizar los nodos raiz de nivel 2 -> **
+		// el nodo central sería de nivel 1 -> *
+		for (ApartadoDTO item : listaApartados) {
 			boolean esRaiz = true;
 			for (String include : includes) {
 				if (StringUtils.containsIgnoreCase(include, item.getArchivo())) {
@@ -352,78 +297,196 @@ public class MainApp {
 				}
 			}
 			if (esRaiz) {
-				listaFicherosRaiz.add(item);
+				listaNodosRaiz.add(item);
 			}
-
 		}
 
-		// System.out.println("@startmindmap");
-		// System.out.println("* nodo padre");
+		pintarCabeceraRaiz(sb, nodo);
 
-		sb.append("@startmindmap").append("\n");
-		// pintamos los estilos
-
-		sb.append(" skin rose                            ").append("\n");
-		sb.append("                                      ").append("\n");
-		sb.append(" <style>                              ").append("\n");
-		sb.append(" mindmapDiagram {                     ").append("\n");
-		sb.append("   .blanco {                          ").append("\n");
-		sb.append("     BackgroundColor white            ").append("\n");
-		sb.append("   }                                  ").append("\n");
-		sb.append("   .green {                           ").append("\n");
-		sb.append("     BackgroundColor lightgreen       ").append("\n");
-		sb.append("   }                                  ").append("\n");
-		sb.append("   .rose {                            ").append("\n");
-		sb.append("     BackgroundColor #FFBBCC          ").append("\n");
-		sb.append("   }                                  ").append("\n");
-		sb.append("   .lightblue {                       ").append("\n");
-		sb.append("     BackgroundColor #lightblue       ").append("\n");
-		sb.append("   }                                  ").append("\n");
-		sb.append("   .orange {                          ").append("\n");
-		sb.append("     BackgroundColor #orange          ").append("\n");
-		sb.append("   }                                  ").append("\n");
-		sb.append("   .necesario_modificar {             ").append("\n");
-		sb.append(" '    BackgroundColor #f57e6c         ").append("\n");
-		sb.append("   }                                  ").append("\n");
-		sb.append(" }                                    ").append("\n");
-		sb.append(" </style>                             ").append("\n");
-
-		sb.append("* nodo padre").append("\n");
-
-		int mitad = listaFicherosRaiz.size() / 2;
+//		int mitad = listaFicherosRaiz.size() / 2;
 		int contador = 0;
-		for (ApartadoDTO item : listaFicherosRaiz) {
-			pintarHijosArbol(2, item, listaFicheros, mostrarDdfDdt, sb);
-//			if(contador == mitad) {
-//				sb.append("left side\n");
-//			}
+
+		for (ApartadoDTO item : listaNodosRaiz) {
+			String nombreFichero = StringUtils.leftPad("" + contador, 3, "0") + "_" + item.getArchivo() + ".puml";
+
+			StringBuffer sbNodoRaiz = new StringBuffer();
+
+			pintarCabeceraNodoSolitario(sbNodoRaiz, nodo);
+
+			pintarHijosArbol(2, item, listaApartados, mostrarDdfDdt, sbNodoRaiz);
+
+			pintarPie(sbNodoRaiz);
+
+			// escribimos nodo hijo puml
+			generarFicheroPuml(sbNodoRaiz, nombreFichero);
+
+			// generamos fichero svg de nodo hijo puml
+			if (generarSvg) {
+				generarFicheroSvg(sbNodoRaiz, StringUtils.remove(nombreFichero, "puml") + "svg");
+			}
+
+			// creamos include del nodo hijo en el chuletario del nodo central
+			sb.append("!include ").append(nombreFichero).append("\n");
+
 			contador++;
 		}
 
-		// System.out.println("@endmindmap");
-		sb.append("@endmindmap").append("\n");
+		pintarPie(sb);
 	}
 
 	/**
-	 * @param nivel
-	 * @param padre
-	 * @param listaFicheros
+	 * Pinta un nodo y sus hijos de manera recursiva, anidando los hijos
+	 * 
+	 * @param nivel          -> nivel del nodo
+	 * @param nodoDto        -> nodo a pintar y del que se pintarán sus hijos
+	 * @param listaApartados -> lista de apartados usada para encontrar los hijos
+	 *                       del nodoDto
+	 * @param mostrarDdfDdt  -> controla si se tiene que pintar los apartados de DDF
+	 *                       y DDT
+	 * @param sb             -> contenido
 	 */
-	public static void pintarHijosArbol(Integer nivel, ApartadoDTO padre, List<ApartadoDTO> listaFicheros,
+	public static void pintarHijosArbol(Integer nivel, ApartadoDTO nodoDto, List<ApartadoDTO> listaApartados,
 			boolean mostrarDdfDdt, StringBuffer sb) {
 
-		pintarNodo(nivel, padre, mostrarDdfDdt, sb);
+		pintarNodo(nivel, nodoDto, mostrarDdfDdt, sb);
 
 		Integer nivelHijo = nivel + 1;
 
-		for (String hijo : padre.getIncludes()) {
+		for (String hijo : nodoDto.getIncludes()) {
 
-			for (ApartadoDTO fichero : listaFicheros) {
+			for (ApartadoDTO fichero : listaApartados) {
 				if (StringUtils.containsIgnoreCase(hijo, "/" + fichero.getArchivo())) {
-					pintarHijosArbol(nivelHijo, fichero, listaFicheros, mostrarDdfDdt, sb);
+					pintarHijosArbol(nivelHijo, fichero, listaApartados, mostrarDdfDdt, sb);
 				}
 			}
 		}
 
+	}
+
+	/**
+	 * Genera los estilos a incluir en los ficheros PUML
+	 * 
+	 * @param sb -> contenido
+	 */
+	private static void pintarEstilos(StringBuffer sb) {
+		sb.append("skin rose                        ").append("\n");
+		sb.append("                                 ").append("\n");
+		sb.append("<style>                          ").append("\n");
+		sb.append("mindmapDiagram {                 ").append("\n");
+		sb.append("  .blanco {                      ").append("\n");
+		sb.append("    BackgroundColor white        ").append("\n");
+		sb.append("  }                              ").append("\n");
+		sb.append("  .green {                       ").append("\n");
+		sb.append("    BackgroundColor lightgreen   ").append("\n");
+		sb.append("  }                              ").append("\n");
+		sb.append("  .rose {                        ").append("\n");
+		sb.append("    BackgroundColor #FFBBCC      ").append("\n");
+		sb.append("  }                              ").append("\n");
+		sb.append("  .lightblue {                   ").append("\n");
+		sb.append("    BackgroundColor #lightblue   ").append("\n");
+		sb.append("  }                              ").append("\n");
+		sb.append("  .orange {                      ").append("\n");
+		sb.append("    BackgroundColor #orange      ").append("\n");
+		sb.append("  }                              ").append("\n");
+		sb.append("  .necesario_modificar {         ").append("\n");
+		sb.append("'    BackgroundColor #f57e6c     ").append("\n");
+		sb.append("  }                              ").append("\n");
+		sb.append("}                                ").append("\n");
+		sb.append("</style>                         ").append("\n");
+	}
+
+	/**
+	 * Genera la cabecera y el nodo central del fichero PUML chuletario
+	 * 
+	 * @param sb          -> contenido
+	 * @param nodoCentral -> nombre del nodo central
+	 */
+	public static void pintarCabeceraRaiz(StringBuffer sb, String nodoCentral) {
+		sb.append("@startmindmap                    ").append("\n");
+		sb.append("                                 ").append("\n");
+
+		pintarEstilos(sb);
+
+		sb.append("\n");
+		sb.append("' variable creada para saber si se incluye o no la cabecera a la hora de visualizar").append("\n");
+		sb.append("' los hijos o la chuleta con todos los hijos").append("\n");
+		sb.append("!raiz = \"true\"").append("\n");
+		sb.append("\n");
+
+		sb.append("* ").append(nodoCentral).append("\n");
+	}
+
+	/**
+	 * Genera el pie de un fichero PUML
+	 * 
+	 * @param sb -> contenido
+	 */
+	public static void pintarPie(StringBuffer sb) {
+		sb.append("@endmindmap").append("\n");
+	}
+
+	/**
+	 * Genera la cabecera de un nodo hijo de un fichero PUML
+	 * 
+	 * @param sb          -> contenido
+	 * @param nodoCentral -> nombre del nodo central
+	 */
+	public static void pintarCabeceraNodoSolitario(StringBuffer sb, String nodoCentral) {
+		sb.append("@startmindmap                    ").append("\n");
+		sb.append("                                 ").append("\n");
+		sb.append("!if (%not(%variable_exists(\"raiz\")))\n");
+
+		pintarEstilos(sb);
+
+		sb.append("* ").append(nodoCentral).append("\n");
+		sb.append("       ").append("\n");
+		sb.append("!endif ").append("\n");
+	}
+
+	/**
+	 * Genera fichero PUML del MindMap
+	 * 
+	 * @param sb            -> contenido del fichero
+	 * @param nombreFichero -> nombre del fichero generado
+	 * 
+	 */
+	public static void generarFicheroPuml(StringBuffer sb, String nombreFichero) {
+		File mapaPumlOutputFile = new File(nombreFichero);
+
+		try (FileWriter fileWriter = new FileWriter(mapaPumlOutputFile)) {
+			fileWriter.write(sb.toString());
+			System.out.println("Archivo PUML generado: " + mapaPumlOutputFile.getAbsolutePath());
+		} catch (IOException ioe) {
+			ioe.printStackTrace();
+		}
+	}
+
+	/**
+	 * Genera fichero SVG del MindMap
+	 * 
+	 * @param sb            -> contenido del fichero
+	 * @param nombreFichero -> nombre del fichero generado
+	 * 
+	 */
+	public static void generarFicheroSvg(StringBuffer sb, String nombreFichero) {
+		try {
+			// Crear objeto SourceStringReader con el código PlantUML
+			SourceStringReader reader = new SourceStringReader(sb.toString());
+
+			// Crear archivo de salida SVG
+			File outputFile = new File(nombreFichero);
+			FileOutputStream outputStream = new FileOutputStream(outputFile);
+
+			// Generar el archivo SVG
+			String svg = reader.generateImage(outputStream, new FileFormatOption(FileFormat.SVG));
+
+			// Cerrar el flujo de salida
+			outputStream.close();
+
+			// Imprimir la ruta del archivo SVG generado
+			System.out.println("Archivo SVG generado: " + outputFile.getAbsolutePath());
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 }
