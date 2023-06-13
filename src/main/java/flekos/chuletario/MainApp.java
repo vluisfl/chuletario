@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -28,8 +29,9 @@ public class MainApp {
 
 	// chuletario --incluir_ddt=n --extension=java
 
-	private final static String NO_MOSTRAR_DDT = "--incluir_ddt=n";
+	private final static String MOSTRAR_DDF = "--incluir_ddf";
 	private final static String FILTRAR_EXTENSION = "--extension=";
+	private final static String NO_GENERAR_SVG = "--no_svg";
 
 	/**
 	 * @param args
@@ -40,11 +42,12 @@ public class MainApp {
 
 		String extension = "xhtml";
 
-		boolean mostrarDdfDdt = true;
+		boolean mostrarDdfDdt = false;
+		boolean generarSvg = true;
 
 		for (String arg : args) {
-			if (StringUtils.containsIgnoreCase(arg, NO_MOSTRAR_DDT)) {
-				mostrarDdfDdt = false;
+			if (StringUtils.containsIgnoreCase(arg, MOSTRAR_DDF)) {
+				mostrarDdfDdt = true;
 			} else if (StringUtils.containsIgnoreCase(arg, FILTRAR_EXTENSION)) {
 				extension = StringUtils.remove(arg, FILTRAR_EXTENSION);
 				if (StringUtils.isBlank(extension)) {
@@ -52,6 +55,8 @@ public class MainApp {
 					System.out.println("No se ha facilitado correctamente la extensión.");
 				}
 				System.out.println("Se buscarán ficheros con extensión: " + extension);
+			} else if (StringUtils.containsIgnoreCase(arg, NO_GENERAR_SVG)) {
+				generarSvg = false;
 			}
 		}
 
@@ -80,28 +85,37 @@ public class MainApp {
 
 		pintarMindMapArbol(listaFicheros, mostrarDdfDdt, sb);
 
-		//dasfdasf
+		// generación del fichero puml
+		File mapaPumlOutputFile = new File("mapa.puml");
+		try (FileWriter fileWriter = new FileWriter(mapaPumlOutputFile)) {
+			fileWriter.write(sb.toString());
+			System.out.println("Archivo PUML generado: " + mapaPumlOutputFile.getAbsolutePath());
+		} catch (IOException ioe) {
+			ioe.printStackTrace();
+		}
 
-		try {
-            // Crear objeto SourceStringReader con el código PlantUML
-            SourceStringReader reader = new SourceStringReader(sb.toString());
+		// generación del fichero svg
+		if (generarSvg) {
+			try {
+				// Crear objeto SourceStringReader con el código PlantUML
+				SourceStringReader reader = new SourceStringReader(sb.toString());
 
-            // Crear archivo de salida SVG
-            File outputFile = new File("output.svg");
-            FileOutputStream outputStream = new FileOutputStream(outputFile);
+				// Crear archivo de salida SVG
+				File outputFile = new File("mapa.svg");
+				FileOutputStream outputStream = new FileOutputStream(outputFile);
 
-            // Generar el archivo SVG
-            String svg = reader.generateImage(outputStream, new FileFormatOption(FileFormat.SVG));
+				// Generar el archivo SVG
+				String svg = reader.generateImage(outputStream, new FileFormatOption(FileFormat.SVG));
 
-            // Cerrar el flujo de salida
-            outputStream.close();
+				// Cerrar el flujo de salida
+				outputStream.close();
 
-            // Imprimir la ruta del archivo SVG generado
-            System.out.println("Archivo SVG generado: " + outputFile.getAbsolutePath());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
+				// Imprimir la ruta del archivo SVG generado
+				System.out.println("Archivo SVG generado: " + outputFile.getAbsolutePath());
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 
 	}
 
@@ -239,6 +253,7 @@ public class MainApp {
 	public static void pintarNodo(Integer nivel, ApartadoDTO itemDTO, boolean mostrarDdfDdt, StringBuffer sb) {
 
 		String profundidad = new String(new char[nivel]).replace("\0", "*");
+		boolean pagina = false;
 
 		if (StringUtils.containsIgnoreCase(itemDTO.getRuta(), "include")) {
 //			System.out.println(profundidad + ": <color #red><size:20><&paperclip></size> " + itemDTO.getArchivo()
@@ -250,41 +265,44 @@ public class MainApp {
 //					profundidad + ": <color #red>" + itemDTO.getArchivo() + "</color> --> <color #blue> XXX </color>");
 			sb.append(profundidad + ": <color #red>" + itemDTO.getArchivo() + "</color> --> <color #blue> XXX </color>")
 					.append("\n");
+			pagina = true;
 		}
 
-		//System.out.println("\t- <color #green>actions:</color>");
+		sb.append(itemDTO.getRuta()).append("\n");
+
+		// System.out.println("\t- <color #green>actions:</color>");
 		sb.append("\t- <color #green>actions:</color>").append("\n");
 		for (String cadena : itemDTO.getActions()) {
-			//System.out.println("\t\t - " + cadena);
+			// System.out.println("\t\t - " + cadena);
 			sb.append("\t\t - " + cadena).append("\n");
 		}
 
-		//System.out.println("\t- <color #green>actions listeners: </color>");
+		// System.out.println("\t- <color #green>actions listeners: </color>");
 		sb.append("\t- <color #green>actions listeners: </color>").append("\n");
 		for (String cadena : itemDTO.getActionListeners()) {
-			//System.out.println("\t\t - " + cadena);
+			// System.out.println("\t\t - " + cadena);
 			sb.append("\t\t - " + cadena).append("\n");
 		}
 
-		//System.out.println("\t- <color #green>listMethods:</color>");
+		// System.out.println("\t- <color #green>listMethods:</color>");
 		sb.append("\t- <color #green>listMethods: </color>").append("\n");
 		for (String cadena : itemDTO.getListMethod()) {
-			//System.out.println("\t\t - " + cadena);
+			// System.out.println("\t\t - " + cadena);
 			sb.append("\t\t - " + cadena).append("\n");
 		}
 
-		//System.out.println("\t- <color #green>countMethods:</color>");
+		// System.out.println("\t- <color #green>countMethods:</color>");
 		sb.append("\t- <color #green>countMethods: </color>").append("\n");
 
 		for (String cadena : itemDTO.getCountMethod()) {
-			//System.out.println("\t\t - " + cadena);
+			// System.out.println("\t\t - " + cadena);
 			sb.append("\t\t - " + cadena).append("\n");
 		}
 
-		//System.out.println("\t- <color #green>includes:</color>");
+		// System.out.println("\t- <color #green>includes:</color>");
 		sb.append("\t- <color #green>includes: </color>").append("\n");
 		for (String cadena : itemDTO.getIncludes()) {
-			//System.out.println("\t\t - " + cadena);
+			// System.out.println("\t\t - " + cadena);
 			sb.append("\t\t - " + cadena).append("\n");
 		}
 
@@ -306,7 +324,13 @@ public class MainApp {
 
 		}
 //		System.out.println(";");
-		sb.append(";").append("\n");
+
+		if (pagina) {
+			sb.append(";").append("\n");
+		} else {
+			sb.append("<<rose>>;").append("\n");
+		}
+
 	}
 
 	public static void pintarMindMapArbol(List<ApartadoDTO> listaFicheros, boolean mostrarDdfDdt, StringBuffer sb) {
@@ -337,9 +361,43 @@ public class MainApp {
 		// System.out.println("* nodo padre");
 
 		sb.append("@startmindmap").append("\n");
+		// pintamos los estilos
+
+		sb.append(" skin rose                            ").append("\n");
+		sb.append("                                      ").append("\n");
+		sb.append(" <style>                              ").append("\n");
+		sb.append(" mindmapDiagram {                     ").append("\n");
+		sb.append("   .blanco {                          ").append("\n");
+		sb.append("     BackgroundColor white            ").append("\n");
+		sb.append("   }                                  ").append("\n");
+		sb.append("   .green {                           ").append("\n");
+		sb.append("     BackgroundColor lightgreen       ").append("\n");
+		sb.append("   }                                  ").append("\n");
+		sb.append("   .rose {                            ").append("\n");
+		sb.append("     BackgroundColor #FFBBCC          ").append("\n");
+		sb.append("   }                                  ").append("\n");
+		sb.append("   .lightblue {                       ").append("\n");
+		sb.append("     BackgroundColor #lightblue       ").append("\n");
+		sb.append("   }                                  ").append("\n");
+		sb.append("   .orange {                          ").append("\n");
+		sb.append("     BackgroundColor #orange          ").append("\n");
+		sb.append("   }                                  ").append("\n");
+		sb.append("   .necesario_modificar {             ").append("\n");
+		sb.append(" '    BackgroundColor #f57e6c         ").append("\n");
+		sb.append("   }                                  ").append("\n");
+		sb.append(" }                                    ").append("\n");
+		sb.append(" </style>                             ").append("\n");
+
 		sb.append("* nodo padre").append("\n");
+
+		int mitad = listaFicherosRaiz.size() / 2;
+		int contador = 0;
 		for (ApartadoDTO item : listaFicherosRaiz) {
 			pintarHijosArbol(2, item, listaFicheros, mostrarDdfDdt, sb);
+//			if(contador == mitad) {
+//				sb.append("left side\n");
+//			}
+			contador++;
 		}
 
 		// System.out.println("@endmindmap");
