@@ -9,7 +9,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -58,16 +57,24 @@ public class MainApp {
 			e.printStackTrace();
 		}
 
-		
+
 		pintarMindMapPlano(listaFicheros);
-		
+
 		// TODO: pintar en arbol
+
+		// localizar los que no aparecen en ningún include -> son los raices
+
+		// para cada uno de los raices
+
+		// pintar hijos
+
+		// para cada hijo -> pintar hijos
 
 	}
 
 	/**
 	 * Inicializa la estructura de apartados y cadenas buscadas
-	 * 
+	 *
 	 * @param apartados
 	 * @param apartado      -> apartado que agrupa los resultados coincidentes con
 	 *                      la cadena buscada
@@ -88,7 +95,7 @@ public class MainApp {
 	/**
 	 * Busca una serie de cadenas dentro de un determinado fichero y muestra las
 	 * coincidencias
-	 * 
+	 *
 	 * @param fichero -> nombre del fichero en el que se buscarán las cadenas
 	 */
 	public static void searchMatchsInFile(String fichero, List<ApartadoDTO> listaFicheros) {
@@ -132,13 +139,13 @@ public class MainApp {
 	/**
 	 * Busca una cadena dentro de una fila y si se encuentra coincidencia se añade a
 	 * lista de coincidencias
-	 * 
+	 *
 	 * @param fila la fila en la que se busca la cadena buscada
 	 * @param cadenaBuscada es el patrón de expresión regular a buscar
 	 * @param listaCoincidencias
 	 */
 	public static void searchString(String fila, String cadenaBuscada, List<String> listaCoincidencias) {
- 
+
 		if (fila.matches(cadenaBuscada)) {
 			listaCoincidencias.add(StringUtils.trim(fila));
 		}
@@ -146,7 +153,7 @@ public class MainApp {
 
 	/**
 	 * Realiza la búsqueda de ficheros que tengan una determinada extensión
-	 * 
+	 *
 	 * @param path
 	 * @param fileExtension
 	 * @return
@@ -177,55 +184,64 @@ public class MainApp {
 
 	/**
 	 * pinta el modelo de mindmap plano
-	 * 
+	 *
 	 * @param listaFicheros
 	 */
 	public static void pintarMindMapPlano(List<ApartadoDTO> listaFicheros) {
 		System.out.println("@startmindmap");
 		System.out.println("* nodo padre");
 		for(ApartadoDTO item: listaFicheros) {
-			
-			if (StringUtils.containsIgnoreCase(item.getRuta(),"include")) {
-				System.out.println("**: <color #red><size:20><&paperclip></size> " + item.getArchivo()+"</color> --> <color #blue> XXX </color>");
-			}else {
-				System.out.println("**: <color #red>" + item.getArchivo()+"</color> --> <color #blue> XXX </color>");
-			}
-			
-			
-			System.out.println("\t- <color #green>actions:</color>");
-			for(String cadena: item.getActions()) {
-				System.out.println("\t\t - " + cadena);
-			}
-			
-			System.out.println("\t- <color #green>actions listeners: </color>");			
-			for(String cadena: item.getActionListeners()) {
-				System.out.println("\t\t - " + cadena);
-			}
-			
-			System.out.println("\t- <color #green>listMethods:</color>");
-			for(String cadena: item.getListMethod()) {
-				System.out.println("\t\t - " + cadena);
-			}
-			
-			System.out.println("\t- <color #green>countMethods:</color>");
-			for(String cadena: item.getCountMethod()) {
-				System.out.println("\t\t - " + cadena);
-			}
-			
-			System.out.println("\t- <color #green>includes:</color>");
-			for(String cadena: item.getIncludes()) {
-				System.out.println("\t\t - " + cadena);
-			}
-			
-			System.out.println("----");
-			System.out.println("\t- DDF");
-			System.out.println("\t\t- Casos de uso:");
-			System.out.println("----");
-			System.out.println("\t- DDT");
-			System.out.println("\t\t- Componente:");
-			System.out.println(";");
+			pintarNodo(2, item);
 		}
 		System.out.println("@endmindmap");
 	}
-	
+
+	/**
+	 * @param nivel
+	 * @param itemDTO
+	 */
+	public static void pintarNodo(Integer nivel, ApartadoDTO itemDTO) {
+
+		String profundidad = new String(new char[nivel]).replace("\0", "*");
+
+		if (StringUtils.containsIgnoreCase(itemDTO.getRuta(),"include")) {
+			System.out.println(profundidad + ": <color #red><size:20><&paperclip></size> " + itemDTO.getArchivo()+"</color> --> <color #blue> XXX </color>");
+		}else {
+			System.out.println(profundidad + ": <color #red>" + itemDTO.getArchivo()+"</color> --> <color #blue> XXX </color>");
+		}
+
+		System.out.println("\t- <color #green>actions:</color>");
+		for(String cadena: itemDTO.getActions()) {
+			System.out.println("\t\t - " + cadena);
+		}
+
+		System.out.println("\t- <color #green>actions listeners: </color>");
+		for(String cadena: itemDTO.getActionListeners()) {
+			System.out.println("\t\t - " + cadena);
+		}
+
+		System.out.println("\t- <color #green>listMethods:</color>");
+		for(String cadena: itemDTO.getListMethod()) {
+			System.out.println("\t\t - " + cadena);
+		}
+
+		System.out.println("\t- <color #green>countMethods:</color>");
+		for(String cadena: itemDTO.getCountMethod()) {
+			System.out.println("\t\t - " + cadena);
+		}
+
+		System.out.println("\t- <color #green>includes:</color>");
+		for(String cadena: itemDTO.getIncludes()) {
+			System.out.println("\t\t - " + cadena);
+		}
+
+		System.out.println("----");
+		System.out.println("\t- DDF");
+		System.out.println("\t\t- Casos de uso:");
+		System.out.println("----");
+		System.out.println("\t- DDT");
+		System.out.println("\t\t- Componente:");
+		System.out.println(";");
+	}
+
 }
