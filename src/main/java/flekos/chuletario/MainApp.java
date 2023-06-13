@@ -2,6 +2,7 @@ package flekos.chuletario;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -14,6 +15,10 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang3.StringUtils;
+
+import net.sourceforge.plantuml.FileFormat;
+import net.sourceforge.plantuml.FileFormatOption;
+import net.sourceforge.plantuml.SourceStringReader;
 
 /**
  * @author victor
@@ -71,7 +76,32 @@ public class MainApp {
 
 		// pintarMindMapPlano(listaFicheros);
 
-		pintarMindMapArbol(listaFicheros, mostrarDdfDdt);
+		StringBuffer sb = new StringBuffer();
+
+		pintarMindMapArbol(listaFicheros, mostrarDdfDdt, sb);
+
+		//dasfdasf
+
+		try {
+            // Crear objeto SourceStringReader con el código PlantUML
+            SourceStringReader reader = new SourceStringReader(sb.toString());
+
+            // Crear archivo de salida SVG
+            File outputFile = new File("output.svg");
+            FileOutputStream outputStream = new FileOutputStream(outputFile);
+
+            // Generar el archivo SVG
+            String svg = reader.generateImage(outputStream, new FileFormatOption(FileFormat.SVG));
+
+            // Cerrar el flujo de salida
+            outputStream.close();
+
+            // Imprimir la ruta del archivo SVG generado
+            System.out.println("Archivo SVG generado: " + outputFile.getAbsolutePath());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
 
 	}
 
@@ -191,69 +221,95 @@ public class MainApp {
 	 * @param listaFicheros
 	 * @param mostrarDdfDdt
 	 */
-	public static void pintarMindMapPlano(List<ApartadoDTO> listaFicheros, boolean mostrarDdfDdt) {
-		System.out.println("@startmindmap");
-		System.out.println("* nodo padre");
+	public static void pintarMindMapPlano(List<ApartadoDTO> listaFicheros, boolean mostrarDdfDdt, StringBuffer sb) {
+		sb.append("@startmindmap").append("\n");
+		sb.append("* nodo padre").append("\n");
 		for (ApartadoDTO item : listaFicheros) {
-			pintarNodo(2, item, mostrarDdfDdt);
+			pintarNodo(2, item, mostrarDdfDdt, sb);
 		}
-		System.out.println("@endmindmap");
+//		System.out.println("@endmindmap");
+		sb.append("@endmindmap").append("\n");
+
 	}
 
 	/**
 	 * @param nivel
 	 * @param itemDTO
 	 */
-	public static void pintarNodo(Integer nivel, ApartadoDTO itemDTO, boolean mostrarDdfDdt) {
+	public static void pintarNodo(Integer nivel, ApartadoDTO itemDTO, boolean mostrarDdfDdt, StringBuffer sb) {
 
 		String profundidad = new String(new char[nivel]).replace("\0", "*");
 
 		if (StringUtils.containsIgnoreCase(itemDTO.getRuta(), "include")) {
-			System.out.println(profundidad + ": <color #red><size:20><&paperclip></size> " + itemDTO.getArchivo()
-					+ "</color> --> <color #blue> XXX </color>");
+//			System.out.println(profundidad + ": <color #red><size:20><&paperclip></size> " + itemDTO.getArchivo()
+//					+ "</color> --> <color #blue> XXX </color>");
+			sb.append(profundidad + ": <color #red><size:20><&paperclip></size> " + itemDTO.getArchivo()
+					+ "</color> --> <color #blue> XXX </color>").append("\n");
 		} else {
-			System.out.println(
-					profundidad + ": <color #red>" + itemDTO.getArchivo() + "</color> --> <color #blue> XXX </color>");
+//			System.out.println(
+//					profundidad + ": <color #red>" + itemDTO.getArchivo() + "</color> --> <color #blue> XXX </color>");
+			sb.append(profundidad + ": <color #red>" + itemDTO.getArchivo() + "</color> --> <color #blue> XXX </color>")
+					.append("\n");
 		}
 
-		System.out.println("\t- <color #green>actions:</color>");
+		//System.out.println("\t- <color #green>actions:</color>");
+		sb.append("\t- <color #green>actions:</color>").append("\n");
 		for (String cadena : itemDTO.getActions()) {
-			System.out.println("\t\t - " + cadena);
+			//System.out.println("\t\t - " + cadena);
+			sb.append("\t\t - " + cadena).append("\n");
 		}
 
-		System.out.println("\t- <color #green>actions listeners: </color>");
+		//System.out.println("\t- <color #green>actions listeners: </color>");
+		sb.append("\t- <color #green>actions listeners: </color>").append("\n");
 		for (String cadena : itemDTO.getActionListeners()) {
-			System.out.println("\t\t - " + cadena);
+			//System.out.println("\t\t - " + cadena);
+			sb.append("\t\t - " + cadena).append("\n");
 		}
 
-		System.out.println("\t- <color #green>listMethods:</color>");
+		//System.out.println("\t- <color #green>listMethods:</color>");
+		sb.append("\t- <color #green>listMethods: </color>").append("\n");
 		for (String cadena : itemDTO.getListMethod()) {
-			System.out.println("\t\t - " + cadena);
+			//System.out.println("\t\t - " + cadena);
+			sb.append("\t\t - " + cadena).append("\n");
 		}
 
-		System.out.println("\t- <color #green>countMethods:</color>");
+		//System.out.println("\t- <color #green>countMethods:</color>");
+		sb.append("\t- <color #green>countMethods: </color>").append("\n");
+
 		for (String cadena : itemDTO.getCountMethod()) {
-			System.out.println("\t\t - " + cadena);
+			//System.out.println("\t\t - " + cadena);
+			sb.append("\t\t - " + cadena).append("\n");
 		}
 
-		System.out.println("\t- <color #green>includes:</color>");
+		//System.out.println("\t- <color #green>includes:</color>");
+		sb.append("\t- <color #green>includes: </color>").append("\n");
 		for (String cadena : itemDTO.getIncludes()) {
-			System.out.println("\t\t - " + cadena);
+			//System.out.println("\t\t - " + cadena);
+			sb.append("\t\t - " + cadena).append("\n");
 		}
 
 		if (mostrarDdfDdt) {
 
-			System.out.println("----");
-			System.out.println("\t- DDF");
-			System.out.println("\t\t- Casos de uso:");
-			System.out.println("----");
-			System.out.println("\t- DDT");
-			System.out.println("\t\t- Componente:");
-			System.out.println(";");
+//			System.out.println("----");
+//			System.out.println("\t- DDF");
+//			System.out.println("\t\t- Casos de uso:");
+//			System.out.println("----");
+//			System.out.println("\t- DDT");
+//			System.out.println("\t\t- Componente:");
+
+			sb.append("----").append("\n");
+			sb.append("\t- DDF").append("\n");
+			sb.append("\t\t- Casos de uso:").append("\n");
+			sb.append("----").append("\n");
+			sb.append("\t- DDT").append("\n");
+			sb.append("\t\t- Componente:").append("\n");
+
 		}
+//		System.out.println(";");
+		sb.append(";").append("\n");
 	}
 
-	public static void pintarMindMapArbol(List<ApartadoDTO> listaFicheros, boolean mostrarDdfDdt) {
+	public static void pintarMindMapArbol(List<ApartadoDTO> listaFicheros, boolean mostrarDdfDdt, StringBuffer sb) {
 
 		List<ApartadoDTO> listaFicherosRaiz = new ArrayList<ApartadoDTO>();
 
@@ -277,12 +333,17 @@ public class MainApp {
 
 		}
 
-		System.out.println("@startmindmap");
-		System.out.println("* nodo padre");
+		// System.out.println("@startmindmap");
+		// System.out.println("* nodo padre");
+
+		sb.append("@startmindmap").append("\n");
+		sb.append("* nodo padre").append("\n");
 		for (ApartadoDTO item : listaFicherosRaiz) {
-			pintarHijosArbol(2, item, listaFicheros, mostrarDdfDdt);
+			pintarHijosArbol(2, item, listaFicheros, mostrarDdfDdt, sb);
 		}
-		System.out.println("@endmindmap");
+
+		// System.out.println("@endmindmap");
+		sb.append("@endmindmap").append("\n");
 	}
 
 	/**
@@ -291,9 +352,9 @@ public class MainApp {
 	 * @param listaFicheros
 	 */
 	public static void pintarHijosArbol(Integer nivel, ApartadoDTO padre, List<ApartadoDTO> listaFicheros,
-			boolean mostrarDdfDdt) {
+			boolean mostrarDdfDdt, StringBuffer sb) {
 
-		pintarNodo(nivel, padre, mostrarDdfDdt);
+		pintarNodo(nivel, padre, mostrarDdfDdt, sb);
 
 		Integer nivelHijo = nivel + 1;
 
@@ -301,7 +362,7 @@ public class MainApp {
 
 			for (ApartadoDTO fichero : listaFicheros) {
 				if (StringUtils.containsIgnoreCase(hijo, "/" + fichero.getArchivo())) {
-					pintarHijosArbol(nivelHijo, fichero, listaFicheros, mostrarDdfDdt);
+					pintarHijosArbol(nivelHijo, fichero, listaFicheros, mostrarDdfDdt, sb);
 				}
 			}
 		}
