@@ -89,7 +89,7 @@ public class MainApp {
 
 		// pintarMindMapPlano(listaFicheros);
 
-		StringBuffer sb = new StringBuffer();
+		StringBuilder sb = new StringBuilder();
 
 		pintarMindMapArbol(listaFicheros, mostrarDdfDdt, sb, nodo, generarSvg);
 
@@ -206,7 +206,7 @@ public class MainApp {
 	 * @param mostrarDdfDdt -> controla si se generarán los apartados de DDF y DDT
 	 * @param sb            -> contenido PUML generado
 	 */
-	public static void pintarNodo(Integer nivel, ApartadoDTO nodoDto, boolean mostrarDdfDdt, StringBuffer sb) {
+	public static void pintarNodo(Integer nivel, ApartadoDTO nodoDto, boolean mostrarDdfDdt, StringBuilder sb) {
 
 		String profundidad = new String(new char[nivel]).replace("\0", "*");
 		boolean pagina = false;
@@ -275,7 +275,7 @@ public class MainApp {
 	 * @param nodo           -> nombre del nodo central
 	 * @param generarSvg     -> controla si se generarán los ficheros SVG
 	 */
-	public static void pintarMindMapArbol(List<ApartadoDTO> listaApartados, boolean mostrarDdfDdt, StringBuffer sb,
+	public static void pintarMindMapArbol(List<ApartadoDTO> listaApartados, boolean mostrarDdfDdt, StringBuilder sb,
 			String nodo, boolean generarSvg) {
 
 		List<ApartadoDTO> listaNodosRaiz = new ArrayList<ApartadoDTO>();
@@ -309,7 +309,7 @@ public class MainApp {
 		for (ApartadoDTO item : listaNodosRaiz) {
 			String nombreFichero = StringUtils.leftPad("" + contador, 3, "0") + "_" + item.getArchivo() + ".puml";
 
-			StringBuffer sbNodoRaiz = new StringBuffer();
+			StringBuilder sbNodoRaiz = new StringBuilder();
 
 			pintarCabeceraNodoSolitario(sbNodoRaiz, nodo);
 
@@ -346,7 +346,7 @@ public class MainApp {
 	 * @param sb             -> contenido
 	 */
 	public static void pintarHijosArbol(Integer nivel, ApartadoDTO nodoDto, List<ApartadoDTO> listaApartados,
-			boolean mostrarDdfDdt, StringBuffer sb) {
+			boolean mostrarDdfDdt, StringBuilder sb) {
 
 		pintarNodo(nivel, nodoDto, mostrarDdfDdt, sb);
 
@@ -368,7 +368,7 @@ public class MainApp {
 	 * 
 	 * @param sb -> contenido
 	 */
-	private static void pintarEstilos(StringBuffer sb) {
+	private static void pintarEstilos(StringBuilder sb) {
 		sb.append("skin rose                        ").append("\n");
 		sb.append("                                 ").append("\n");
 		sb.append("<style>                          ").append("\n");
@@ -401,7 +401,7 @@ public class MainApp {
 	 * @param sb          -> contenido
 	 * @param nodoCentral -> nombre del nodo central
 	 */
-	public static void pintarCabeceraRaiz(StringBuffer sb, String nodoCentral) {
+	public static void pintarCabeceraRaiz(StringBuilder sb, String nodoCentral) {
 		sb.append("@startmindmap                    ").append("\n");
 		sb.append("                                 ").append("\n");
 
@@ -421,7 +421,7 @@ public class MainApp {
 	 * 
 	 * @param sb -> contenido
 	 */
-	public static void pintarPie(StringBuffer sb) {
+	public static void pintarPie(StringBuilder sb) {
 		sb.append("@endmindmap").append("\n");
 	}
 
@@ -431,7 +431,7 @@ public class MainApp {
 	 * @param sb          -> contenido
 	 * @param nodoCentral -> nombre del nodo central
 	 */
-	public static void pintarCabeceraNodoSolitario(StringBuffer sb, String nodoCentral) {
+	public static void pintarCabeceraNodoSolitario(StringBuilder sb, String nodoCentral) {
 		sb.append("@startmindmap                    ").append("\n");
 		sb.append("                                 ").append("\n");
 		sb.append("!if (%not(%variable_exists(\"raiz\")))\n");
@@ -450,7 +450,7 @@ public class MainApp {
 	 * @param nombreFichero -> nombre del fichero generado
 	 * 
 	 */
-	public static void generarFicheroPuml(StringBuffer sb, String nombreFichero) {
+	public static void generarFicheroPuml(StringBuilder sb, String nombreFichero) {
 		File mapaPumlOutputFile = new File(nombreFichero);
 
 		try (FileWriter fileWriter = new FileWriter(mapaPumlOutputFile)) {
@@ -468,7 +468,7 @@ public class MainApp {
 	 * @param nombreFichero -> nombre del fichero generado
 	 * 
 	 */
-	public static void generarFicheroSvg(StringBuffer sb, String nombreFichero) {
+	public static void generarFicheroSvg(StringBuilder sb, String nombreFichero) {
 		try {
 			// Crear objeto SourceStringReader con el código PlantUML
 			SourceStringReader reader = new SourceStringReader(sb.toString());
